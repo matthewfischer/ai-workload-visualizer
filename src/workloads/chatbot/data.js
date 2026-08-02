@@ -13,9 +13,10 @@ export const RESOURCES = {
   mem:     { name: 'HBM Capacity',  helps: 'more VRAM, quantization, KV-cache compression, CXL / host offload' },
   nic:     { name: 'Network',       helps: 'faster fabric, more NICs, RDMA' },
   cpu:     { name: 'Host CPU',      helps: 'faster / more host cores' },
+  hostMem: { name: 'Host Memory',   helps: 'more system RAM, pinned-buffer transfers, larger request queues' },
   pcie:    { name: 'PCIe',          helps: 'PCIe 5→6, or NVLink to bypass the host' },
 };
-export const ORDER = ['nic', 'cpu', 'pcie', 'compute', 'hbmBw', 'mem'];
+export const ORDER = ['nic', 'cpu', 'hostMem', 'pcie', 'compute', 'hbmBw', 'mem'];
 
 // The two phases we animate. loads are 0..1 targets; the engine eases toward them.
 export const PHASES = {
@@ -23,14 +24,14 @@ export const PHASES = {
     name: 'Prefill',
     bottleneck: 'compute',
     caption: 'Reading your whole prompt in one parallel pass. The matrix engine is doing real work and seeding the KV cache.',
-    loads: { nic: .20, cpu: .35, pcie: .25, compute: .85, hbmBw: .50, mem: .35 },
+    loads: { nic: .20, cpu: .35, hostMem: .30, pcie: .25, compute: .85, hbmBw: .50, mem: .35 },
   },
   decode: {
     name: 'Decode',
     bottleneck: 'hbmBw',
     caption: 'One token at a time. Every token drags the entire model + KV cache out of HBM. The cores mostly wait — the memory bus is the wall.',
     // mem grows with the conversation, so it's filled in live from KV size (see targetLoads).
-    loads: { nic: .18, cpu: .22, pcie: .12, compute: .18, hbmBw: .95, mem: .40 },
+    loads: { nic: .18, cpu: .22, hostMem: .24, pcie: .12, compute: .18, hbmBw: .95, mem: .40 },
   },
 };
 
@@ -42,7 +43,7 @@ export const TIMING = {
 export function createState() {
   return {
     phase: 'prefill', phaseStart: 0, decodeStart: 0, tokens: 0, kv: 0,
-    disp: { nic: 0, cpu: 0, pcie: 0, compute: 0, hbmBw: 0, mem: 0 },
+    disp: { nic: 0, cpu: 0, hostMem: 0, pcie: 0, compute: 0, hbmBw: 0, mem: 0 },
   };
 }
 

@@ -17,22 +17,23 @@ export const RESOURCES = {
   mem:     { name: 'HBM Capacity',  helps: 'more VRAM, quantization, KV-cache compression, CXL / host offload' },
   nic:     { name: 'Network',       helps: 'faster fabric, more NICs, RDMA' },
   cpu:     { name: 'Host CPU',      helps: 'faster / more host cores' },
+  hostMem: { name: 'Host Memory',   helps: 'more system RAM, pinned-buffer transfers, larger request queues' },
   pcie:    { name: 'PCIe',          helps: 'PCIe 5→6, or NVLink to bypass the host' },
 };
-export const ORDER = ['nic', 'cpu', 'pcie', 'compute', 'hbmBw', 'mem'];
+export const ORDER = ['nic', 'cpu', 'hostMem', 'pcie', 'compute', 'hbmBw', 'mem'];
 
 export const PHASES = {
   ingest: {
     name: 'Ingesting document',
     bottleneck: 'compute',
     caption: 'Reading a 200-page document in one long parallel pass. Every extra token of context multiplies the matmul work — compute is the wall here, not memory bandwidth.',
-    loads: { nic: .18, cpu: .30, pcie: .22, compute: .96, hbmBw: .55, mem: .40 },
+    loads: { nic: .18, cpu: .30, hostMem: .34, pcie: .22, compute: .96, hbmBw: .55, mem: .40 },
   },
   summarize: {
     name: 'Summarizing',
     bottleneck: 'hbmBw',
     caption: "Now it's an ordinary decode loop, one token at a time. Same bandwidth wall as any decode — it's just dragging a much bigger context out of HBM every step.",
-    loads: { nic: .12, cpu: .18, pcie: .10, compute: .15, hbmBw: .93, mem: .88 },
+    loads: { nic: .12, cpu: .18, hostMem: .22, pcie: .10, compute: .15, hbmBw: .93, mem: .88 },
   },
 };
 
@@ -45,7 +46,7 @@ export const TIMING = {
 export function createState() {
   return {
     phase: 'ingest', phaseStart: 0, summarizeStart: 0, pages: 0, tokens: 0,
-    disp: { nic: 0, cpu: 0, pcie: 0, compute: 0, hbmBw: 0, mem: 0 },
+    disp: { nic: 0, cpu: 0, hostMem: 0, pcie: 0, compute: 0, hbmBw: 0, mem: 0 },
   };
 }
 

@@ -1,5 +1,5 @@
 import { C, heat } from '../../engine/theme.js';
-import { SmallNode, BigNode, FeedLine, Channel } from '../../engine/primitives.jsx';
+import { SmallNode, BigNode, FeedLine, Channel, HostPanel } from '../../engine/primitives.jsx';
 import { PHASES, TIMING, TOKENS_PER_PAGE, ingestLogLines, revealedSummary } from './data.js';
 
 /* This workload's physical story differs from chatbot's only in emphasis:
@@ -34,9 +34,11 @@ export default function LongctxScene({ state, disp }) {
   return (
     <>
       {/* intake: network -> cpu -> compute (feeding the document in) */}
-      <SmallNode x={20} y={26} w={112} h={48} label="Network" util={disp.nic} />
-      <SmallNode x={150} y={26} w={112} h={48} label="Host CPU" util={disp.cpu} />
-      <FeedLine from={[206, 74]} to={[240, 158]} util={disp.pcie} clock={state.clock} />
+      <HostPanel x={44} y={14} w={312} h={100} />
+      <SmallNode x={132} y={28} w={96} h={42} label="Host CPU" util={disp.cpu} />
+      <SmallNode x={246} y={28} w={96} h={42} label="Host Mem" util={disp.hostMem} />
+      <SmallNode x={8} y={42} w={100} h={44} label="Network" util={disp.nic} />
+      <FeedLine from={[180, 70]} to={[250, 158]} util={disp.pcie} clock={state.clock} label="PCIe" />
 
       {/* the bandwidth channel: memory -> compute, right to left */}
       <Channel x0={690} x1={350} top={206} bot={294} util={disp.hbmBw} clock={state.clock}

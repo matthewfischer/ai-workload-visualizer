@@ -16,22 +16,23 @@ export const RESOURCES = {
   mem:     { name: 'HBM Capacity',  helps: 'more VRAM, quantization, KV-cache compression, CXL / host offload' },
   nic:     { name: 'Network',       helps: 'faster fabric, more NICs, RDMA' },
   cpu:     { name: 'Host CPU',      helps: 'faster / more host cores' },
+  hostMem: { name: 'Host Memory',   helps: 'more system RAM, pinned-buffer transfers, larger request queues' },
   pcie:    { name: 'PCIe',          helps: 'PCIe 5→6, or NVLink to bypass the host' },
 };
-export const ORDER = ['nic', 'cpu', 'pcie', 'compute', 'hbmBw', 'mem'];
+export const ORDER = ['nic', 'cpu', 'hostMem', 'pcie', 'compute', 'hbmBw', 'mem'];
 
 export const PHASES = {
   ramp: {
     name: 'Admitting requests',
     bottleneck: 'compute',
     caption: 'A handful of requests share the GPU. Plenty of memory headroom — compute is the busy one, scheduling batched matmuls across them.',
-    loads: { nic: .30, cpu: .35, pcie: .20, compute: .65, hbmBw: .50, mem: .30 },
+    loads: { nic: .30, cpu: .35, hostMem: .32, pcie: .20, compute: .65, hbmBw: .50, mem: .30 },
   },
   saturated: {
     name: 'Batch at capacity',
     bottleneck: 'mem',
     caption: "Every concurrent request holds its own KV cache in HBM. Once that memory fills up, the ceiling isn't compute or bandwidth — it's how many KV caches fit. New requests queue.",
-    loads: { nic: .20, cpu: .30, pcie: .15, compute: .55, hbmBw: .60, mem: .95 },
+    loads: { nic: .20, cpu: .30, hostMem: .35, pcie: .15, compute: .55, hbmBw: .60, mem: .95 },
   },
 };
 
@@ -45,7 +46,7 @@ export const TIMING = {
 export function createState() {
   return {
     phase: 'ramp', phaseStart: 0, saturatedStart: 0, requests: 0, queued: 0,
-    disp: { nic: 0, cpu: 0, pcie: 0, compute: 0, hbmBw: 0, mem: 0 },
+    disp: { nic: 0, cpu: 0, hostMem: 0, pcie: 0, compute: 0, hbmBw: 0, mem: 0 },
   };
 }
 

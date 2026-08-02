@@ -1,5 +1,5 @@
 import { C } from '../../engine/theme.js';
-import { SmallNode, BigNode, FeedLine, Channel } from '../../engine/primitives.jsx';
+import { SmallNode, BigNode, FeedLine, Channel, HostPanel } from '../../engine/primitives.jsx';
 import { PHASES, logLines } from './data.js';
 
 /* HANDOFF.md flagged that training needs a different visual mode than the
@@ -16,9 +16,12 @@ export default function TrainingScene({ state, disp }) {
 
   return (
     <>
-      {/* data loader feeding the first GPU's batch shard */}
-      <SmallNode x={20} y={16} w={140} h={44} label="Data Loader" util={disp.cpu} />
-      <FeedLine from={[90, 60]} to={[140, 100]} util={disp.pcie} clock={state.clock} />
+      {/* data loader feeding the first GPU's batch shard — the box is labeled
+          as a fleet, not a single host: at this scale every GPU node has its
+          own host CPU sharding data locally, not one shared front-end */}
+      <HostPanel x={8} y={6} w={172} h={84} label="HOST NODES ×4" />
+      <SmallNode x={20} y={34} w={140} h={44} label="Data Loader" util={disp.cpu} />
+      <FeedLine from={[90, 78]} to={[140, 100]} util={disp.pcie} clock={state.clock} label="PCIe" />
 
       {/* GPU cluster: identical nodes, each computing its own shard */}
       {GPU_X.map((x, i) => (

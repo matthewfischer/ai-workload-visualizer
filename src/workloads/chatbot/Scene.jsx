@@ -1,5 +1,5 @@
 import { C, heat, lerp, bez, pct } from '../../engine/theme.js';
-import { SmallNode, BigNode, FeedLine, Channel } from '../../engine/primitives.jsx';
+import { SmallNode, BigNode, FeedLine, Channel, HostPanel } from '../../engine/primitives.jsx';
 import { beatProgress, PHASES, PROMPT, revealedResponse } from './data.js';
 
 /* Pieces below are specific to this workload's physical story (weights +
@@ -64,10 +64,14 @@ export default function ChatbotScene({ state, disp }) {
 
   return (
     <>
-      {/* intake: network → cpu → compute (active in prefill) */}
-      <SmallNode x={20} y={26} w={112} h={48} label="Network" util={disp.nic} />
-      <SmallNode x={150} y={26} w={112} h={48} label="Host CPU" util={disp.cpu} />
-      <FeedLine from={[206, 74]} to={[240, 158]} util={disp.pcie} clock={state.clock} />
+      {/* intake: network → host (cpu + memory) → compute (active in prefill).
+          Network straddles the host box's left edge — it's the boundary
+          traffic crosses in from, not a resource the host owns. */}
+      <HostPanel x={44} y={14} w={312} h={100} />
+      <SmallNode x={132} y={28} w={96} h={42} label="Host CPU" util={disp.cpu} />
+      <SmallNode x={246} y={28} w={96} h={42} label="Host Mem" util={disp.hostMem} />
+      <SmallNode x={8} y={42} w={100} h={44} label="Network" util={disp.nic} />
+      <FeedLine from={[180, 70]} to={[250, 158]} util={disp.pcie} clock={state.clock} label="PCIe" />
 
       {/* the bandwidth channel (HERO): memory → compute, right to left */}
       <Channel x0={690} x1={350} top={206} bot={294} util={disp.hbmBw} clock={state.clock}

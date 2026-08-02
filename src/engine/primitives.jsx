@@ -15,6 +15,23 @@ export function SmallNode({ x, y, w, h, label, util }) {
   );
 }
 
+/**
+ * The physical machine's own resources — CPU, host memory — as one drawn
+ * enclosure. Network sits on the boundary rather than inside it: it's the
+ * one resource that's about traffic crossing in from outside the box, not
+ * something the host owns outright. Draw this first; the caller places
+ * SmallNodes for the enclosed resources inside it and one straddling its
+ * left edge for network.
+ */
+export function HostPanel({ x, y, w, h, label = 'HOST' }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={12} fill={C.bg} stroke={C.edge} strokeWidth={1.3} />
+      <text x={x + 14} y={y + 20} textAnchor="start" fill={C.mut} fontSize={10} fontWeight={700} fontFamily={C.mono} letterSpacing={1.5}>{label}</text>
+    </g>
+  );
+}
+
 export function BigNode({ x, y, w, h, title, sub, util, bottleneck, idleNote }) {
   const col = heat(util);
   const cx = x + w / 2;
@@ -30,7 +47,7 @@ export function BigNode({ x, y, w, h, title, sub, util, bottleneck, idleNote }) 
   );
 }
 
-export function FeedLine({ from, to, util, clock }) {
+export function FeedLine({ from, to, util, clock, label }) {
   const col = heat(util);
   const n = Math.round(util * 5);
   const dots = [];
@@ -38,10 +55,14 @@ export function FeedLine({ from, to, util, clock }) {
     const t = (clock * 0.3 + i / Math.max(1, n)) % 1;
     dots.push([lerp(from[0], to[0], t), lerp(from[1], to[1], t)]);
   }
+  const mx = (from[0] + to[0]) / 2, my = (from[1] + to[1]) / 2;
   return (
     <g>
       <line x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} stroke={C.steel} strokeWidth={2} strokeLinecap="round" opacity={0.7} />
       {dots.map((d, i) => <circle key={i} cx={d[0]} cy={d[1]} r={2.4} fill={col} />)}
+      {label && (
+        <text x={mx + 10} y={my - 6} textAnchor="start" fill={C.mut} fontSize={10} fontFamily={C.mono} letterSpacing={0.5}>{label}</text>
+      )}
     </g>
   );
 }
