@@ -12,6 +12,8 @@ import * as vmotionData from './vmotion/data.js';
 import VmotionScene, { headerLabel as vmotionHeaderLabel, Terminal as vmotionTerminal } from './vmotion/Scene.jsx';
 import * as ragData from './rag/data.js';
 import RagScene, { headerLabel as ragHeaderLabel, Terminal as ragTerminal } from './rag/Scene.jsx';
+import * as noisyneighborData from './noisyneighbor/data.js';
+import NoisyNeighborScene, { headerLabel as noisyneighborHeaderLabel, Terminal as noisyneighborTerminal } from './noisyneighbor/Scene.jsx';
 
 /* The registry is the one place that has to know a new workload exists.
  * To add one (AI or not — SAP HANA buffer-cache thrash, Oracle redo-log
@@ -60,6 +62,12 @@ export const WORKLOADS = {
     Scene: RagScene,
     headerLabel: ragHeaderLabel,
     Terminal: ragTerminal,
+  },
+  noisyneighbor: {
+    ...noisyneighborData,
+    Scene: NoisyNeighborScene,
+    headerLabel: noisyneighborHeaderLabel,
+    Terminal: noisyneighborTerminal,
   },
 };
 
