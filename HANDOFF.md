@@ -7,23 +7,38 @@ and which is marketing. **Not** a customer-facing sales tool.
 
 ## Current state
 
-- **As of this pass, the project moved from a single-file prototype to a real
-  Vite/React app with code/model separation.** See `ARCHITECTURE.md` for the
-  structure — **read that file first**, it supersedes the old "Architecture"
-  section below in terms of where things physically live. The concepts
-  (RESOURCES / PHASES / render engine) are unchanged, just relocated and
-  formalized into an explicit contract (`src/engine/workloadContract.js`) so
-  non-AI workloads (SAP HANA, Oracle, ...) can be added as siblings to
-  `src/workloads/chatbot/` without touching engine code.
-- **UNVERIFIED:** `npm install` / `npm test` / `npm run build` had not been
-  run yet when this pass ended (ran out of budget). Next session should
-  start there — see "Status as of this pass" at the bottom of
-  `ARCHITECTURE.md` for likely rough edges.
+- The project is a real Vite/React app with code/model separation. See
+  `ARCHITECTURE.md` for the structure — **read that file first**, it
+  supersedes the old "Architecture" section below in terms of where things
+  physically live. The concepts (RESOURCES / PHASES / render engine) are
+  unchanged, just relocated and formalized into an explicit contract
+  (`src/engine/workloadContract.js`) so non-AI workloads (SAP HANA, Oracle,
+  ...) can be added as siblings to `src/workloads/chatbot/` without touching
+  engine code. `npm install && npm test && npm run build` all pass (52 tests).
 - Old single-file prototype `ai_workload_visualizer_v2.jsx` is still at the
-  repo root, untouched, as a known-working reference until the new
-  structure is confirmed to build and run.
-- **Scope so far:** one use case done well — **running a chatbot**: `Prefill → Decode` loop.
-- **v1** (`ai_workload_visualizer.jsx`, not in this repo snapshot) had 4 workloads (chatbot / long-context / batch / training) but generic dots-on-lines rendering. Superseded by v2, which drops to one case and invests in the visual language. The v1 workload data is worth keeping as the seed for re-expansion.
+  repo root, untouched, as a reference.
+- **Scope: four workloads now registered** — see "Next workloads to re-add"
+  below, which this pass closed out: `chatbot` (prefill→decode), `longctx`
+  (ingest→summarize, compute-bound), `batch` (ramp→saturated, capacity-bound),
+  `training` (compute↔all-reduce loop, network-bound, its own multi-GPU
+  `Scene`).
+- **Terminal panels added for all four workloads** (`engine/TerminalWindow.jsx`
+  chrome + each workload's own `Terminal` export in `Scene.jsx`) — content
+  matches each workload's actual story rather than forcing one style:
+  - `chatbot`: canned prompt during prefill, response revealed word-by-word
+    in sync with `state.tokens` during decode.
+  - `longctx`: a scrolling fake "parsing" log during ingest (one line per
+    page, sampled from a fixed snippet pool) + a running extracted-token
+    count, then a canned summary revealed word-by-word during summarize.
+  - `batch`: one admission-log line per resident request, then one queued
+    line per waiting arrival once the batch saturates.
+  - `training`: a classic training-loop console — fake (not measured, but
+    deterministic per step) decreasing loss line + an all-reduce sync-timing
+    line, alternating with the phase.
+  All of the above are pure functions of state (`ingestLogLines`,
+  `revealedSummary`, `logLines`, etc. in each workload's `data.js`) so
+  they're covered by ordinary unit tests, no rendering needed.
+- **v1** (`ai_workload_visualizer.jsx`, not in this repo snapshot) had 4 workloads (chatbot / long-context / batch / training) but generic dots-on-lines rendering. Superseded by v2, which drops to one case and invests in the visual language, and this pass, which re-added the other three with the new visual language and separable data model.
 
 ## Architecture (the part to preserve)
 
@@ -77,10 +92,15 @@ Three layers, deliberately separable:
 
 ## Next workloads to re-add (data only)
 
-- **Long-context / summarization** → prefill-bound (compute is the wall).
-- **Batch serving** → capacity-bound (every request needs its own KV cache; caps concurrency).
-- **Training** → network-bound at scale (gradient all-reduce). Note: training needs a different
-  visual mode than the inference token-loop; don't force it into the same animation.
+- ~~**Long-context / summarization** → prefill-bound (compute is the wall).~~ Done: `src/workloads/longctx/`.
+- ~~**Batch serving** → capacity-bound (every request needs its own KV cache; caps concurrency).~~ Done: `src/workloads/batch/`.
+- ~~**Training** → network-bound at scale (gradient all-reduce). Note: training needs a different
+  visual mode than the inference token-loop; don't force it into the same animation.~~ Done:
+  `src/workloads/training/` — 4 parallel GPU nodes wired into a shared network-fabric channel,
+  looping compute↔all-reduce rather than a one-shot run.
+- Possible next candidates: a non-AI workload (SAP HANA buffer-cache thrash, Oracle redo-log
+  write pressure) to prove out the "not just AI" claim in ARCHITECTURE.md; per-workload `Terminal`
+  panels for batch/training/longctx (log-line style, not literal chat transcript).
 
 ## Tech notes
 

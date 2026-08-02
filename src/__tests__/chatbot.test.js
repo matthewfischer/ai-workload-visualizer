@@ -82,4 +82,11 @@ describe('chatbot workload: prefill -> decode progression', () => {
     expect(bt).toBeGreaterThanOrEqual(0);
     expect(bt).toBeLessThan(1);
   });
+
+  it('revealedResponse grows word-by-word and clamps at the full response', () => {
+    expect(chatbot.revealedResponse(0)).toBe('');
+    expect(chatbot.revealedResponse(1)).toBe(chatbot.RESPONSE_WORDS[0]);
+    expect(chatbot.revealedResponse(3)).toBe(chatbot.RESPONSE_WORDS.slice(0, 3).join(' '));
+    expect(chatbot.revealedResponse(9999)).toBe(chatbot.RESPONSE_WORDS.join(' '));
+  });
 });

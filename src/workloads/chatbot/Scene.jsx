@@ -1,6 +1,6 @@
 import { C, heat, lerp, bez, pct } from '../../engine/theme.js';
 import { SmallNode, BigNode, FeedLine, Channel } from '../../engine/primitives.jsx';
-import { beatProgress, PHASES } from './data.js';
+import { beatProgress, PHASES, PROMPT, revealedResponse } from './data.js';
 
 /* Pieces below are specific to this workload's physical story (weights +
    KV cache living in HBM, one append per generated token) and stay local
@@ -93,6 +93,29 @@ export default function ChatbotScene({ state, disp }) {
 
 export function headerLabel(state) {
   return state.phase === 'decode' ? `token ${state.tokens}` : 'reading prompt…';
+}
+
+/* Terminal panel content — plain HTML/text (not SVG), rendered by App.jsx
+   inside the shared engine/TerminalWindow chrome. During prefill it shows
+   the prompt "loading"; during decode the canned response is revealed
+   word-by-word as `state.tokens` climbs, matching the append-arc pulses. */
+export function Terminal({ state }) {
+  if (state.phase === 'prefill') {
+    const dots = '.'.repeat(1 + Math.floor(state.clock * 2) % 3);
+    return (
+      <>
+        <span style={{ color: C.mut }}>$ loading prompt{dots}</span>{'\n'}
+        <span style={{ color: C.ink }}>&gt; {PROMPT}</span>
+      </>
+    );
+  }
+  return (
+    <>
+      <span style={{ color: C.mut }}>&gt; {PROMPT}</span>{'\n\n'}
+      <span style={{ color: C.ink }}>{revealedResponse(state.tokens)}</span>
+      <span className="idle" style={{ color: C.cyan }}>▍</span>
+    </>
+  );
 }
 
 export { pct };

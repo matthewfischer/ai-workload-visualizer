@@ -35,6 +35,15 @@
  *                 (SmallNode, BigNode, Channel, FeedLine, ...) plus whatever
  *                 bespoke pieces the workload needs (e.g. a KV cache block
  *                 for chatbot inference, a redo-log ring for Oracle).
+ *   Terminal      React component (props: { state }) => plain HTML/text
+ *                 children, optional. Rendered by App.jsx inside the shared
+ *                 engine/TerminalWindow chrome (a generic terminal-style
+ *                 panel: title bar + monospace body). Use it when the
+ *                 workload has a concrete textual thing to show happening
+ *                 (a chat transcript revealed token-by-token, log lines,
+ *                 a query plan) — skip it entirely when there's no natural
+ *                 text output; App.jsx omits the panel if a workload has no
+ *                 Terminal export.
  *
  * Adding a new workload (AI or not — SAP HANA, Oracle, whatever) means
  * adding one folder here and registering it in src/workloads/index.js.

@@ -73,3 +73,19 @@ export function beatProgress(s, speed) {
   if (s.phase !== 'decode') return -1;
   return (((s.clock - s.decodeStart) * speed) / TIMING.BEAT) % 1;
 }
+
+// A single fixed sample exchange, revealed word-by-word in the terminal
+// panel in lockstep with `tokens` — ties the abstract diagram to a concrete
+// chat transcript. Not measured, just a plausible chatbot answer about
+// itself.
+export const PROMPT = 'Explain why decoding is bandwidth-bound, in two sentences.';
+const RESPONSE = "Because each new token forces the GPU to re-read every model weight and the "
+  + "entire KV cache out of HBM, decode moves a huge volume of data through memory for very "
+  + "little arithmetic. The compute cores end up mostly idle, waiting on the memory bus instead "
+  + "of crunching numbers.";
+export const RESPONSE_WORDS = RESPONSE.split(' ');
+
+/** The response text revealed so far, given a token count (clamped to the full response). */
+export function revealedResponse(tokens) {
+  return RESPONSE_WORDS.slice(0, Math.min(tokens, RESPONSE_WORDS.length)).join(' ');
+}

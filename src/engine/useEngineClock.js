@@ -12,8 +12,10 @@ const EASE_RATE = 3.5; // higher = snappier tracking of displayed load toward ta
 export function useEngineClock(workload) {
   const [, force] = useReducer((x) => x + 1, 0);
   const st = useRef(null);
-  if (st.current === null) {
+  const loadedId = useRef(null);
+  if (st.current === null || loadedId.current !== workload.id) {
     st.current = { playing: true, speed: 1, clock: 0, ...workload.createState() };
+    loadedId.current = workload.id;
   }
 
   useEffect(() => {

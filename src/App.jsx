@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { C, heat, pct } from './engine/theme.js';
 import { useEngineClock } from './engine/useEngineClock.js';
 import { TelemetryStrip, Narration, Controls } from './engine/Chrome.jsx';
+import { TerminalWindow } from './engine/TerminalWindow.jsx';
 import { WORKLOADS, WORKLOAD_LIST, DEFAULT_WORKLOAD_ID } from './workloads/index.js';
 
 export default function App() {
@@ -25,15 +26,19 @@ export default function App() {
       {/* workload picker — always visible, even with one workload, so it's
           never ambiguous which model you're looking at. Doubles as the
           visible proof that code and models are separate. */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
         <span style={{ fontSize: 10, fontFamily: C.mono, color: C.mut, textTransform: 'uppercase', letterSpacing: 1 }}>Model:</span>
-        {WORKLOAD_LIST.map((w) => (
-          <div key={w.id} className="btn" onClick={() => setWorkloadId(w.id)}
-            style={{ padding: '5px 10px', borderRadius: 7, fontSize: 11, fontFamily: C.mono,
-              border: `1px solid ${w.id === workloadId ? C.cyan : C.edge}`, color: w.id === workloadId ? C.ink : C.mut }}>
-            {w.label}
-          </div>
-        ))}
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <select value={workloadId} onChange={(e) => setWorkloadId(e.target.value)}
+            style={{ appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
+              background: C.panel, color: C.ink, border: `1px solid ${C.cyan}`, borderRadius: 7,
+              padding: '6px 26px 6px 10px', fontSize: 12, fontFamily: C.mono, cursor: 'pointer' }}>
+            {WORKLOAD_LIST.map((w) => (
+              <option key={w.id} value={w.id} style={{ background: C.panel, color: C.ink }}>{w.label}</option>
+            ))}
+          </select>
+          <span style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: C.mut, fontSize: 10 }}>▾</span>
+        </div>
       </div>
 
       {/* header */}
@@ -66,6 +71,12 @@ export default function App() {
       </div>
 
       <Narration RESOURCES={workload.RESOURCES} bottleneckKey={bn} bottleneckPct={state.disp[bn]} caption={phase.caption} />
+
+      {workload.Terminal && (
+        <TerminalWindow title={`${workload.id} · output`}>
+          <workload.Terminal state={state} />
+        </TerminalWindow>
+      )}
 
       <TelemetryStrip RESOURCES={workload.RESOURCES} ORDER={workload.ORDER} disp={state.disp} bottleneckKey={bn} />
 
