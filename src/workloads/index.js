@@ -6,6 +6,8 @@ import * as batchData from './batch/data.js';
 import BatchScene, { headerLabel as batchHeaderLabel, Terminal as batchTerminal } from './batch/Scene.jsx';
 import * as trainingData from './training/data.js';
 import TrainingScene, { headerLabel as trainingHeaderLabel, Terminal as trainingTerminal } from './training/Scene.jsx';
+import * as redologData from './redolog/data.js';
+import RedologScene, { headerLabel as redologHeaderLabel, Terminal as redologTerminal } from './redolog/Scene.jsx';
 
 /* The registry is the one place that has to know a new workload exists.
  * To add one (AI or not — SAP HANA buffer-cache thrash, Oracle redo-log
@@ -36,6 +38,12 @@ export const WORKLOADS = {
     Scene: TrainingScene,
     headerLabel: trainingHeaderLabel,
     Terminal: trainingTerminal,
+  },
+  redolog: {
+    ...redologData,
+    Scene: RedologScene,
+    headerLabel: redologHeaderLabel,
+    Terminal: redologTerminal,
   },
 };
 
