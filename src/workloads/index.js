@@ -8,6 +8,10 @@ import * as trainingData from './training/data.js';
 import TrainingScene, { headerLabel as trainingHeaderLabel, Terminal as trainingTerminal } from './training/Scene.jsx';
 import * as redologData from './redolog/data.js';
 import RedologScene, { headerLabel as redologHeaderLabel, Terminal as redologTerminal } from './redolog/Scene.jsx';
+import * as vmotionData from './vmotion/data.js';
+import VmotionScene, { headerLabel as vmotionHeaderLabel, Terminal as vmotionTerminal } from './vmotion/Scene.jsx';
+import * as ragData from './rag/data.js';
+import RagScene, { headerLabel as ragHeaderLabel, Terminal as ragTerminal } from './rag/Scene.jsx';
 
 /* The registry is the one place that has to know a new workload exists.
  * To add one (AI or not — SAP HANA buffer-cache thrash, Oracle redo-log
@@ -44,6 +48,18 @@ export const WORKLOADS = {
     Scene: RedologScene,
     headerLabel: redologHeaderLabel,
     Terminal: redologTerminal,
+  },
+  vmotion: {
+    ...vmotionData,
+    Scene: VmotionScene,
+    headerLabel: vmotionHeaderLabel,
+    Terminal: vmotionTerminal,
+  },
+  rag: {
+    ...ragData,
+    Scene: RagScene,
+    headerLabel: ragHeaderLabel,
+    Terminal: ragTerminal,
   },
 };
 
