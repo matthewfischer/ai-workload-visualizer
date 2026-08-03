@@ -14,6 +14,8 @@ import * as ragData from './rag/data.js';
 import RagScene, { headerLabel as ragHeaderLabel, Terminal as ragTerminal } from './rag/Scene.jsx';
 import * as noisyneighborData from './noisyneighbor/data.js';
 import NoisyNeighborScene, { headerLabel as noisyneighborHeaderLabel, Terminal as noisyneighborTerminal } from './noisyneighbor/Scene.jsx';
+import * as cpuinferData from './cpuinfer/data.js';
+import CpuInferScene, { headerLabel as cpuinferHeaderLabel, Terminal as cpuinferTerminal } from './cpuinfer/Scene.jsx';
 
 /* The registry is the one place that has to know a new workload exists.
  * To add one (AI or not — SAP HANA buffer-cache thrash, Oracle redo-log
@@ -68,6 +70,12 @@ export const WORKLOADS = {
     Scene: NoisyNeighborScene,
     headerLabel: noisyneighborHeaderLabel,
     Terminal: noisyneighborTerminal,
+  },
+  cpuinfer: {
+    ...cpuinferData,
+    Scene: CpuInferScene,
+    headerLabel: cpuinferHeaderLabel,
+    Terminal: cpuinferTerminal,
   },
 };
 
