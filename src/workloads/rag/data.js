@@ -45,8 +45,8 @@ export const PHASES = {
 };
 
 export const TIMING = {
-  RETRIEVE_DUR: 3.0,  // seconds at 1x for the vector search round trip
-  PREFILL_DUR: 2.4,   // seconds at 1x to ingest query + retrieved chunks
+  RETRIEVE_DUR: 6.0,  // seconds at 1x for the vector search round trip
+  PREFILL_DUR: 4.8,   // seconds at 1x to ingest query + retrieved chunks
   BEAT: 0.85,          // seconds per generated token at 1x
   CHUNK_TARGET: 6,    // chunks retrieved by the end of the retrieve phase
 };
