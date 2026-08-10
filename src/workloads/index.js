@@ -16,6 +16,8 @@ import * as noisyneighborData from './noisyneighbor/data.js';
 import NoisyNeighborScene, { headerLabel as noisyneighborHeaderLabel, Terminal as noisyneighborTerminal } from './noisyneighbor/Scene.jsx';
 import * as cpuinferData from './cpuinfer/data.js';
 import CpuInferScene, { headerLabel as cpuinferHeaderLabel, Terminal as cpuinferTerminal } from './cpuinfer/Scene.jsx';
+import * as cipipelineData from './cipipeline/data.js';
+import CiPipelineScene, { headerLabel as cipipelineHeaderLabel, Terminal as cipipelineTerminal } from './cipipeline/Scene.jsx';
 
 /* The registry is the one place that has to know a new workload exists.
  * To add one (AI or not — SAP HANA buffer-cache thrash, Oracle redo-log
@@ -76,6 +78,12 @@ export const WORKLOADS = {
     Scene: CpuInferScene,
     headerLabel: cpuinferHeaderLabel,
     Terminal: cpuinferTerminal,
+  },
+  cipipeline: {
+    ...cipipelineData,
+    Scene: CiPipelineScene,
+    headerLabel: cipipelineHeaderLabel,
+    Terminal: cipipelineTerminal,
   },
 };
 

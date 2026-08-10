@@ -44,6 +44,9 @@ export function useEngineClock(workload) {
   const setPlay = (p) => { st.current.playing = p; force(); };
   const setSpeed = (sp) => { st.current.speed = sp; force(); };
   const resetRun = () => { workload.reset(st.current); force(); };
+  // Optional: workloads with a `KNOBS` spec (see Chrome.jsx's KnobPanel)
+  // keep their live values in state.knobs; this just mutates that map.
+  const setKnob = (key, value) => { st.current.knobs = { ...st.current.knobs, [key]: value }; force(); };
 
-  return { state: s, setPlay, setSpeed, resetRun };
+  return { state: s, setPlay, setSpeed, resetRun, setKnob };
 }
