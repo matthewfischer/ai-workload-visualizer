@@ -1,17 +1,20 @@
 import { useState } from 'react';
 import { C, heat, pct } from './engine/theme.js';
 import { useEngineClock } from './engine/useEngineClock.js';
-import { TelemetryStrip, Narration, Controls } from './engine/Chrome.jsx';
+import { TelemetryStrip, Narration, Controls, KnobPanel } from './engine/Chrome.jsx';
 import { TerminalWindow } from './engine/TerminalWindow.jsx';
 import { WORKLOADS, WORKLOAD_LIST, DEFAULT_WORKLOAD_ID } from './workloads/index.js';
 
 export default function App() {
   const [workloadId, setWorkloadId] = useState(DEFAULT_WORKLOAD_ID);
   const workload = WORKLOADS[workloadId];
-  const { state, setPlay, setSpeed, resetRun } = useEngineClock(workload);
+  const { state, setPlay, setSpeed, resetRun, setKnob } = useEngineClock(workload);
 
   const phase = workload.PHASES[state.phase];
-  const bn = phase.bottleneck;
+  // Most workloads author a fixed bottleneck/caption per phase. A workload
+  // with live KNOBS instead computes both from current state.
+  const bn = workload.bottleneckKey ? workload.bottleneckKey(state) : phase.bottleneck;
+  const caption = workload.caption ? workload.caption(state) : phase.caption;
   const Scene = workload.Scene;
 
   return (
@@ -70,7 +73,7 @@ export default function App() {
         </svg>
       </div>
 
-      <Narration RESOURCES={workload.RESOURCES} bottleneckKey={bn} bottleneckPct={state.disp[bn]} caption={phase.caption} />
+      <Narration RESOURCES={workload.RESOURCES} bottleneckKey={bn} bottleneckPct={state.disp[bn]} caption={caption} />
 
       {workload.Terminal && (
         <TerminalWindow title={`${workload.id} · output`}>
@@ -79,6 +82,8 @@ export default function App() {
       )}
 
       <TelemetryStrip RESOURCES={workload.RESOURCES} ORDER={workload.ORDER} disp={state.disp} bottleneckKey={bn} />
+
+      {workload.KNOBS && <KnobPanel KNOBS={workload.KNOBS} knobs={state.knobs} onChange={setKnob} />}
 
       <Controls playing={state.playing} speed={state.speed} onPlay={setPlay} onSpeed={setSpeed} onReset={resetRun} resetLabel="New run" />
     </div>

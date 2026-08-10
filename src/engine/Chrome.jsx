@@ -42,6 +42,32 @@ export function Narration({ RESOURCES, bottleneckKey, bottleneckPct, caption }) 
   );
 }
 
+/**
+ * Optional: for workloads that expose a `KNOBS` spec (see
+ * workloadContract.js) instead of / in addition to canned phases — live
+ * inputs the viewer tunes (dev count, stage durations, capacity...) with
+ * the resulting bottleneck computed rather than authored. Purely generic:
+ * renders whatever { label, min, max, step, unit } entries the workload
+ * declares, against its current `state.knobs` values.
+ */
+export function KnobPanel({ KNOBS, knobs, onChange }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px,1fr))', gap: 8, marginTop: 14 }}>
+      {Object.entries(KNOBS).map(([key, k]) => (
+        <div key={key} style={{ background: C.panel, border: `1px solid ${C.edge}`, borderRadius: 9, padding: '8px 10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 11 }}>
+            <span style={{ color: C.mut }}>{k.label}</span>
+            <span style={{ fontFamily: C.mono, color: C.ink, fontWeight: 700 }}>{knobs[key]}{k.unit}</span>
+          </div>
+          <input type="range" min={k.min} max={k.max} step={k.step} value={knobs[key]}
+            onChange={(e) => onChange(key, Number(e.target.value))}
+            style={{ width: '100%', marginTop: 6, accentColor: C.cyan }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Controls({ playing, speed, onPlay, onSpeed, onReset, resetLabel, speeds = [0.5, 1, 2] }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>

@@ -45,6 +45,22 @@
  *                 text output; App.jsx omits the panel if a workload has no
  *                 Terminal export.
  *
+ * Optional live-knob extension (see src/workloads/cipipeline/ for the
+ * reference implementation): a workload may export
+ *   KNOBS          { [key]: { label, min, max, step, unit } } — declares
+ *                  sliders rendered generically by engine/Chrome.jsx's
+ *                  KnobPanel. Current values live in state.knobs (seeded by
+ *                  createState()); useEngineClock's `setKnob(key, value)`
+ *                  mutates them.
+ *   bottleneckKey(state) -> string — optional override; if present, App.jsx
+ *                  uses this instead of PHASES[state.phase].bottleneck, for
+ *                  workloads whose bottleneck is computed from live knobs
+ *                  rather than authored per phase.
+ *   caption(state) -> string — optional override of PHASES[state.phase].caption,
+ *                  same idea.
+ * A workload using this still needs a valid PHASES entry (contract-shape
+ * tests check it), just one whose `loads`/`bottleneck` are unused fallbacks.
+ *
  * Adding a new workload (AI or not — SAP HANA, Oracle, whatever) means
  * adding one folder here and registering it in src/workloads/index.js.
  * The engine (theme, clock hook, primitives, telemetry strip, controls,
