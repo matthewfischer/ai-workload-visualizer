@@ -15,6 +15,8 @@ describe('chatbot workload: prefill -> decode progression', () => {
   it('starts in prefill', () => {
     const s = chatbot.createState();
     expect(s.phase).toBe('prefill');
+    expect(s.knobs).toEqual(chatbot.DEFAULT_KNOBS);
+    expect(chatbot.isMultiGpu(s)).toBe(true);
   });
 
   it('transitions to decode once PREFILL_DUR elapses', () => {
@@ -88,5 +90,27 @@ describe('chatbot workload: prefill -> decode progression', () => {
     expect(chatbot.revealedResponse(1)).toBe(chatbot.RESPONSE_WORDS[0]);
     expect(chatbot.revealedResponse(3)).toBe(chatbot.RESPONSE_WORDS.slice(0, 3).join(' '));
     expect(chatbot.revealedResponse(9999)).toBe(chatbot.RESPONSE_WORDS.join(' '));
+  });
+
+  it('models sharded multi-GPU inference and orders GPU-GPU path pressure by topology cost', () => {
+    expect(chatbot.GPU_SHARDS).toBe(4);
+    expect(chatbot.INTERCONNECT_PATHS.map((p) => p.key)).toEqual(['nvlink', 'pcieSwitch', 'cpuPath']);
+    expect(chatbot.INTERCONNECT_PATHS[0].pressure).toBeLessThan(chatbot.INTERCONNECT_PATHS[1].pressure);
+    expect(chatbot.INTERCONNECT_PATHS[1].pressure).toBeLessThan(chatbot.INTERCONNECT_PATHS[2].pressure);
+    expect(chatbot.PHASES.decode.loads.gpuLink).toBeGreaterThan(chatbot.PHASES.decode.loads.compute);
+  });
+
+  it('can switch load/caption modeling between single GPU and multi GPU', () => {
+    const s = chatbot.createState();
+    expect(chatbot.targetLoads(s).gpuLink).toBeGreaterThan(0);
+    expect(chatbot.caption(s)).toContain('four model shards');
+
+    s.knobs = { ...s.knobs, multiGpu: 0 };
+    expect(chatbot.isMultiGpu(s)).toBe(false);
+    expect(chatbot.targetLoads(s).gpuLink).toBe(0);
+    expect(chatbot.caption(s)).toContain('one GPU');
+
+    chatbot.reset(s);
+    expect(s.knobs.multiGpu).toBe(0);
   });
 });

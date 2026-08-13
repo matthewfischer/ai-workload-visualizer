@@ -16,4 +16,13 @@ describe('App', () => {
     const initialPhase = w.PHASES[w.createState().phase];
     expect(screen.getByText(initialPhase.name)).toBeInTheDocument();
   });
+
+  it('toggles chatbot between multi GPU and single GPU narration', () => {
+    render(<App />);
+    expect(screen.getByText('GPU topology')).toBeInTheDocument();
+    expect(screen.getByText(/four model shards/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Single GPU' }));
+    expect(screen.getByText(/one GPU/)).toBeInTheDocument();
+  });
 });

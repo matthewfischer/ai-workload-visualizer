@@ -5,7 +5,18 @@
 
 export const id = 'chatbot';
 export const label = 'Running a chatbot';
-export const subtitle = 'Prefill → Decode · watch where it runs hot';
+export const subtitle = 'Prefill -> Decode · single or sharded GPU';
+
+export const GPU_SHARDS = 4;
+export const DEFAULT_KNOBS = { multiGpu: 1 };
+export const KNOBS = {
+  multiGpu: { type: 'toggle', label: 'GPU topology', offLabel: 'Single GPU', onLabel: 'Multi GPU' },
+};
+export const INTERCONNECT_PATHS = [
+  { key: 'nvlink', label: 'NVLink / NVSwitch', note: 'direct GPU fabric', pressure: 0.42 },
+  { key: 'pcieSwitch', label: 'PCIe switch', note: 'shared switch hops', pressure: 0.70 },
+  { key: 'cpuPath', label: 'CPU root path', note: 'GPU -> CPU -> GPU bounce', pressure: 0.94 },
+];
 
 export const RESOURCES = {
   compute: { name: 'GPU Compute',   helps: 'newer tensor cores, FP8/FP16 math, AMX-style matrix engines' },
@@ -14,25 +25,36 @@ export const RESOURCES = {
   nic:     { name: 'Network',       helps: 'faster fabric, more NICs, RDMA' },
   cpu:     { name: 'Host CPU',      helps: 'faster / more host cores' },
   hostMem: { name: 'Host Memory',   helps: 'more system RAM, pinned-buffer transfers, larger request queues' },
-  pcie:    { name: 'PCIe',          helps: 'PCIe 5→6, or NVLink to bypass the host' },
+  pcie:    { name: 'PCIe',          helps: 'PCIe 5->6 for host ingress, pinned buffers, fewer host-device copies' },
+  gpuLink: { name: 'GPU-GPU Link',  helps: 'NVLink/NVSwitch, shard placement on the same switch domain, avoiding CPU-bounce transfers' },
 };
-export const ORDER = ['nic', 'cpu', 'hostMem', 'pcie', 'compute', 'hbmBw', 'mem'];
+export const ORDER = ['nic', 'cpu', 'hostMem', 'pcie', 'gpuLink', 'compute', 'hbmBw', 'mem'];
 
 // The two phases we animate. loads are 0..1 targets; the engine eases toward them.
 export const PHASES = {
   prefill: {
     name: 'Prefill',
     bottleneck: 'compute',
-    caption: 'Reading your whole prompt in one parallel pass. The matrix engine is doing real work and seeding the KV cache.',
-    loads: { nic: .20, cpu: .35, hostMem: .30, pcie: .25, compute: .85, hbmBw: .50, mem: .35 },
+    caption: 'Reading the whole prompt in one parallel pass across four model shards. Tensor cores do the work, while the GPU-GPU link carries layer collectives between shards.',
+    loads: { nic: .20, cpu: .35, hostMem: .30, pcie: .25, gpuLink: .44, compute: .85, hbmBw: .50, mem: .35 },
   },
   decode: {
     name: 'Decode',
     bottleneck: 'hbmBw',
-    caption: 'One token at a time. Every token drags the entire model + KV cache out of HBM. The cores mostly wait — the memory bus is the wall.',
+    caption: 'One token at a time. Every shard rereads its weights and KV cache from HBM; NVLink keeps the shard exchange tolerable, but the same traffic over a PCIe switch or CPU bounce path can turn communication into the wall.',
     // mem grows with the conversation, so it's filled in live from KV size (see targetLoads).
-    loads: { nic: .18, cpu: .22, hostMem: .24, pcie: .12, compute: .18, hbmBw: .95, mem: .40 },
+    loads: { nic: .18, cpu: .22, hostMem: .24, pcie: .12, gpuLink: .55, compute: .18, hbmBw: .95, mem: .40 },
   },
+};
+
+const SINGLE_GPU_LOADS = {
+  prefill: { nic: .20, cpu: .35, hostMem: .30, pcie: .25, gpuLink: 0, compute: .85, hbmBw: .50, mem: .35 },
+  decode: { nic: .18, cpu: .22, hostMem: .24, pcie: .12, gpuLink: 0, compute: .18, hbmBw: .95, mem: .40 },
+};
+
+const SINGLE_GPU_CAPTIONS = {
+  prefill: 'Reading your whole prompt in one parallel pass on one GPU. The matrix engine is doing real work and seeding the KV cache.',
+  decode: 'One token at a time. Every token drags the entire model plus KV cache out of local HBM. The cores mostly wait; the memory bus is the wall.',
 };
 
 export const TIMING = {
@@ -43,7 +65,8 @@ export const TIMING = {
 export function createState() {
   return {
     phase: 'prefill', phaseStart: 0, decodeStart: 0, tokens: 0, kv: 0,
-    disp: { nic: 0, cpu: 0, hostMem: 0, pcie: 0, compute: 0, hbmBw: 0, mem: 0 },
+    knobs: { ...DEFAULT_KNOBS },
+    disp: { nic: 0, cpu: 0, hostMem: 0, pcie: 0, gpuLink: 0, compute: 0, hbmBw: 0, mem: 0 },
   };
 }
 
@@ -60,9 +83,18 @@ export function step(s, dt, speed) {
 }
 
 export function targetLoads(s) {
-  const target = { ...PHASES[s.phase].loads };
+  const phaseLoads = isMultiGpu(s) ? PHASES[s.phase].loads : SINGLE_GPU_LOADS[s.phase];
+  const target = { ...phaseLoads };
   if (s.phase === 'decode') target.mem = 0.35 + s.kv * 0.55;
   return target;
+}
+
+export function isMultiGpu(s) {
+  return (s.knobs?.multiGpu ?? DEFAULT_KNOBS.multiGpu) === 1;
+}
+
+export function caption(s) {
+  return isMultiGpu(s) ? PHASES[s.phase].caption : SINGLE_GPU_CAPTIONS[s.phase];
 }
 
 export function reset(s) {
