@@ -1,6 +1,6 @@
 /* The distributed-training workload: many GPUs each computing a shard of a
  * batch, then synchronizing gradients before the next step. Same
- * six-resource machine, but network-bound rather than compute- or
+ * resource model, but network-bound rather than compute- or
  * bandwidth-bound: the forward/backward pass is a compute wall, but the
  * gradient all-reduce that follows saturates the cross-node fabric while
  * compute goes idle waiting. Unlike the other workloads (one run, done),
@@ -10,30 +10,42 @@
 
 export const id = 'training';
 export const label = 'Training at scale';
-export const subtitle = 'Forward/backward → All-reduce · the network is the wall';
+export const subtitle = 'Forward/backward -> All-reduce · 2-socket, 8-GPU hosts';
+
+export const NODE_COUNT = 2;
+export const SOCKETS_PER_NODE = 2;
+export const GPUS_PER_SOCKET = 4;
+export const GPUS_PER_NODE = SOCKETS_PER_NODE * GPUS_PER_SOCKET;
+export const INTERCONNECT_PATHS = [
+  { key: 'nvlink', label: 'NVLink / NVSwitch', note: 'socket-local GPU fabric', pressure: 0.48 },
+  { key: 'pcieSwitch', label: 'PCIe switch', note: 'shared switch bandwidth', pressure: 0.76 },
+  { key: 'cpuPath', label: 'CPU root path', note: 'GPU -> CPU/UPI -> GPU bounce', pressure: 0.97 },
+];
 
 export const RESOURCES = {
   compute: { name: 'GPU Compute',   helps: 'newer tensor cores, FP8/FP16 math, AMX-style matrix engines' },
   hbmBw:   { name: 'HBM Bandwidth', helps: 'faster HBM (HBM3e), quantization, bigger micro-batches' },
   mem:     { name: 'HBM Capacity',  helps: 'more VRAM, activation checkpointing, ZeRO-style optimizer sharding' },
   nic:     { name: 'Network',       helps: 'faster fabric, more NICs, RDMA, better all-reduce topology' },
-  cpu:     { name: 'Host CPU',      helps: 'faster / more host cores for the data loader' },
-  pcie:    { name: 'PCIe',          helps: 'PCIe 5→6, or NVLink/NVSwitch to bypass the host entirely' },
+  gpuLink: { name: 'GPU-GPU Link',  helps: 'NVLink/NVSwitch, topology-aware rank placement, avoiding CPU/root-complex bounce paths' },
+  cpuLink: { name: 'CPU Interconnect', helps: 'NUMA-aware data placement, keeping GPU traffic socket-local, avoiding cross-socket CPU bounce paths' },
+  cpu:     { name: 'Host CPU',      helps: 'balanced data loaders per socket, faster / more host cores, NUMA-aware pinning' },
+  pcie:    { name: 'PCIe',          helps: 'PCIe 5->6, balanced roots/switches, or NVLink/NVSwitch to bypass the host entirely' },
 };
-export const ORDER = ['nic', 'cpu', 'pcie', 'compute', 'hbmBw', 'mem'];
+export const ORDER = ['nic', 'gpuLink', 'cpuLink', 'cpu', 'pcie', 'compute', 'hbmBw', 'mem'];
 
 export const PHASES = {
   compute: {
     name: 'Forward / backward pass',
     bottleneck: 'compute',
-    caption: 'Each GPU crunches its shard of the batch independently — tensor cores pinned, no need to talk to the other nodes yet.',
-    loads: { nic: .10, cpu: .25, pcie: .30, compute: .94, hbmBw: .55, mem: .55 },
+    caption: 'Each host is a two-socket system with four GPUs attached to each CPU/root complex. During forward/backward, all 16 GPUs crunch their local shards while host CPUs fan input batches to their attached GPUs.',
+    loads: { nic: .10, gpuLink: .24, cpuLink: .18, cpu: .32, pcie: .40, compute: .94, hbmBw: .55, mem: .55 },
   },
   allreduce: {
     name: 'Gradient all-reduce',
     bottleneck: 'nic',
-    caption: 'Every GPU now shares its gradients with every other GPU before the next step. At this scale, that cross-node exchange saturates the network fabric — compute goes idle waiting for it to finish.',
-    loads: { nic: .95, cpu: .20, pcie: .55, compute: .15, hbmBw: .40, mem: .55 },
+    caption: 'Every GPU shares gradients before the next step. Socket-local NVLink/NVSwitch handles the fast GPU exchange, UPI/QPI connects the two CPUs inside each host, and the cross-node RDMA fabric is pinned.',
+    loads: { nic: .95, gpuLink: .78, cpuLink: .42, cpu: .22, pcie: .62, compute: .15, hbmBw: .40, mem: .55 },
   },
 };
 
@@ -45,7 +57,7 @@ export const TIMING = {
 export function createState() {
   return {
     phase: 'compute', phaseStart: 0, trainStep: 0,
-    disp: { nic: 0, cpu: 0, pcie: 0, compute: 0, hbmBw: 0, mem: 0 },
+    disp: { nic: 0, gpuLink: 0, cpuLink: 0, cpu: 0, pcie: 0, compute: 0, hbmBw: 0, mem: 0 },
   };
 }
 

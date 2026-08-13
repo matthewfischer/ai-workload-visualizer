@@ -52,6 +52,9 @@
  *                  KnobPanel. Current values live in state.knobs (seeded by
  *                  createState()); useEngineClock's `setKnob(key, value)`
  *                  mutates them.
+ *                  Binary knobs can instead declare
+ *                  { type: 'toggle', label, offLabel, onLabel } and store
+ *                  0/1 in state.knobs.
  *   bottleneckKey(state) -> string — optional override; if present, App.jsx
  *                  uses this instead of PHASES[state.phase].bottleneck, for
  *                  workloads whose bottleneck is computed from live knobs

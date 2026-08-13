@@ -100,3 +100,45 @@ export function Channel({ x0, x1, top, bot, util, clock, bottleneck, label, dire
     </g>
   );
 }
+
+/**
+ * Compact comparison of several ways the same payload could cross a link.
+ * Workloads provide the labels and pressure values; the primitive only draws
+ * lanes, heat, and moving particles.
+ */
+export function PathComparison({ x, y, w, title, paths, clock, rowHeight = 28 }) {
+  const rowH = rowHeight;
+  const h = 40 + paths.length * rowH;
+  const trackX = x + Math.min(178, w * 0.34);
+  const pctX = x + w - 14;
+  const trackW = Math.max(90, pctX - trackX - 46);
+
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={10} fill="#0c131d" stroke={C.edge} strokeWidth={1.2} opacity={0.98} />
+      <text x={x + 14} y={y + 19} textAnchor="start" fill={C.mut} fontSize={10} fontFamily={C.mono} letterSpacing={0.8}>{title}</text>
+      {paths.map((p, i) => {
+        const util = Math.max(0, Math.min(1, p.util));
+        const col = heat(util);
+        const rowY = y + 32 + i * rowH;
+        const dots = [];
+        const n = Math.max(1, Math.round(util * 5));
+        for (let d = 0; d < n; d++) {
+          const t = (clock * (0.18 + util * 0.42) + d / n + i * 0.11) % 1;
+          dots.push(trackX + t * trackW);
+        }
+
+        return (
+          <g key={p.key}>
+            <text x={x + 14} y={rowY + 10} textAnchor="start" fill={C.ink} fontSize={10.5} fontWeight={700} fontFamily={C.sans}>{p.label}</text>
+            <text x={x + 14} y={rowY + 22} textAnchor="start" fill={C.mut} fontSize={9} fontFamily={C.mono}>{p.note}</text>
+            <rect x={trackX} y={rowY + 7} width={trackW} height={8} rx={4} fill="#182231" />
+            <rect x={trackX} y={rowY + 7} width={trackW * util} height={8} rx={4} fill={col} opacity={0.82} />
+            {dots.map((cx, di) => <circle key={di} cx={cx} cy={rowY + 11} r={2.2} fill={col} opacity={0.55 + util * 0.35} />)}
+            <text x={pctX} y={rowY + 15} textAnchor="end" fill={col} fontSize={11} fontWeight={800} fontFamily={C.mono}>{pct(util)}%</text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}

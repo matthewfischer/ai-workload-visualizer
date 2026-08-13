@@ -66,4 +66,18 @@ describe('training workload: compute <-> all-reduce loop', () => {
     expect(lines[1]).toContain('step 0 · all-reduce · synced');
     expect(lines.at(-1)).toContain('step 1 · forward/backward');
   });
+
+  it('models a multinode GPU cluster and orders GPU-GPU path pressure by topology cost', () => {
+    expect(training.NODE_COUNT).toBe(2);
+    expect(training.SOCKETS_PER_NODE).toBe(2);
+    expect(training.GPUS_PER_SOCKET).toBe(4);
+    expect(training.GPUS_PER_NODE).toBe(8);
+    expect(training.NODE_COUNT * training.GPUS_PER_NODE).toBe(16);
+    expect(training.INTERCONNECT_PATHS.map((p) => p.key)).toEqual(['nvlink', 'pcieSwitch', 'cpuPath']);
+    expect(training.INTERCONNECT_PATHS[0].pressure).toBeLessThan(training.INTERCONNECT_PATHS[1].pressure);
+    expect(training.INTERCONNECT_PATHS[1].pressure).toBeLessThan(training.INTERCONNECT_PATHS[2].pressure);
+    expect(training.ORDER).toContain('cpuLink');
+    expect(training.PHASES.allreduce.loads.gpuLink).toBeGreaterThan(training.PHASES.compute.loads.gpuLink);
+    expect(training.PHASES.allreduce.loads.cpuLink).toBeGreaterThan(training.PHASES.compute.loads.cpuLink);
+  });
 });

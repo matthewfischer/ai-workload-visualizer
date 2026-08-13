@@ -53,17 +53,41 @@ export function Narration({ RESOURCES, bottleneckKey, bottleneckPct, caption }) 
 export function KnobPanel({ KNOBS, knobs, onChange }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px,1fr))', gap: 8, marginTop: 14 }}>
-      {Object.entries(KNOBS).map(([key, k]) => (
-        <div key={key} style={{ background: C.panel, border: `1px solid ${C.edge}`, borderRadius: 9, padding: '8px 10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 11 }}>
-            <span style={{ color: C.mut }}>{k.label}</span>
-            <span style={{ fontFamily: C.mono, color: C.ink, fontWeight: 700 }}>{knobs[key]}{k.unit}</span>
+      {Object.entries(KNOBS).map(([key, k]) => {
+        const value = knobs[key];
+        const isToggle = k.type === 'toggle';
+        return (
+          <div key={key} style={{ background: C.panel, border: `1px solid ${C.edge}`, borderRadius: 9, padding: '8px 10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 11 }}>
+              <span style={{ color: C.mut }}>{k.label}</span>
+              <span style={{ fontFamily: C.mono, color: C.ink, fontWeight: 700 }}>
+                {isToggle ? (value ? k.onLabel : k.offLabel) : `${value}${k.unit}`}
+              </span>
+            </div>
+            {isToggle ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginTop: 7 }}>
+                {[
+                  { label: k.offLabel, value: 0 },
+                  { label: k.onLabel, value: 1 },
+                ].map((option) => {
+                  const selected = value === option.value;
+                  return (
+                    <button key={option.value} type="button" className="btn" onClick={() => onChange(key, option.value)}
+                      style={{ border: `1px solid ${selected ? C.cyan : C.edge}`, borderRadius: 7, background: selected ? '#12313a' : C.bg,
+                        color: selected ? C.ink : C.mut, padding: '6px 8px', fontSize: 11, fontFamily: C.mono, fontWeight: selected ? 800 : 600 }}>
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <input type="range" min={k.min} max={k.max} step={k.step} value={value}
+                onChange={(e) => onChange(key, Number(e.target.value))}
+                style={{ width: '100%', marginTop: 6, accentColor: C.cyan }} />
+            )}
           </div>
-          <input type="range" min={k.min} max={k.max} step={k.step} value={knobs[key]}
-            onChange={(e) => onChange(key, Number(e.target.value))}
-            style={{ width: '100%', marginTop: 6, accentColor: C.cyan }} />
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
