@@ -78,3 +78,41 @@ describe('batch-serving workload: ramp -> saturated progression', () => {
     expect(lines[lines.length - 1]).toContain('queued');
   });
 });
+
+describe('batch-serving workload: PCIe-gen knob moves its own bar, never the bottleneck', () => {
+  it('starts on PCIe 5.0 by default', () => {
+    const s = batch.createState();
+    expect(s.knobs).toEqual(batch.DEFAULT_KNOBS);
+    expect(s.knobs.pcieGen).toBe('gen5');
+  });
+
+  it('switching to Gen 6 halves the pcie target load without changing mem/compute', () => {
+    const s = batch.createState();
+    s.clock = 0; s.phaseStart = 0;
+    advance(s, batch.TIMING.RAMP_DUR + 0.1); // saturated
+    const gen5 = batch.targetLoads(s);
+    s.knobs = { ...s.knobs, pcieGen: 'gen6' };
+    const gen6 = batch.targetLoads(s);
+    expect(gen6.pcie).toBeCloseTo(gen5.pcie / 2);
+    expect(gen6.mem).toBe(gen5.mem);
+    expect(gen6.compute).toBe(gen5.compute);
+  });
+
+  it('the bottleneck (mem, once saturated) is unaffected by PCIe generation', () => {
+    const s = batch.createState();
+    s.clock = 0; s.phaseStart = 0;
+    advance(s, batch.TIMING.RAMP_DUR + 0.1);
+    expect(batch.PHASES[s.phase].bottleneck).toBe('mem');
+    s.knobs = { ...s.knobs, pcieGen: 'gen6' };
+    expect(batch.targetLoads(s).pcie).toBeLessThan(batch.targetLoads(s).mem);
+  });
+
+  it('caption() calls out the non-effect only when Gen 6 is selected', () => {
+    const s = batch.createState();
+    s.clock = 0; s.phaseStart = 0;
+    advance(s, batch.TIMING.RAMP_DUR + 0.1);
+    expect(batch.caption(s)).toBe(batch.PHASES[s.phase].caption);
+    s.knobs = { ...s.knobs, pcieGen: 'gen6' };
+    expect(batch.caption(s)).toContain("doesn't touch that");
+  });
+});

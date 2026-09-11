@@ -54,7 +54,12 @@
  *                  mutates them.
  *                  Binary knobs can instead declare
  *                  { type: 'toggle', label, offLabel, onLabel } and store
- *                  0/1 in state.knobs.
+ *                  0/1 in state.knobs. A knob that picks between named
+ *                  options (e.g. a CPU platform) declares
+ *                  { type: 'select', label, options: [{ value, label,
+ *                  shortLabel? }] } and stores the chosen `value` (any
+ *                  type — usually a string key into a workload-owned
+ *                  lookup table) in state.knobs.
  *   bottleneckKey(state) -> string — optional override; if present, App.jsx
  *                  uses this instead of PHASES[state.phase].bottleneck, for
  *                  workloads whose bottleneck is computed from live knobs

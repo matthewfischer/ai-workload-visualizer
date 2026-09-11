@@ -8,8 +8,6 @@ import * as trainingData from './training/data.js';
 import TrainingScene, { headerLabel as trainingHeaderLabel, Terminal as trainingTerminal } from './training/Scene.jsx';
 import * as redologData from './redolog/data.js';
 import RedologScene, { headerLabel as redologHeaderLabel, Terminal as redologTerminal } from './redolog/Scene.jsx';
-import * as vmotionData from './vmotion/data.js';
-import VmotionScene, { headerLabel as vmotionHeaderLabel, Terminal as vmotionTerminal } from './vmotion/Scene.jsx';
 import * as ragData from './rag/data.js';
 import RagScene, { headerLabel as ragHeaderLabel, Terminal as ragTerminal } from './rag/Scene.jsx';
 import * as noisyneighborData from './noisyneighbor/data.js';
@@ -18,6 +16,8 @@ import * as cpuinferData from './cpuinfer/data.js';
 import CpuInferScene, { headerLabel as cpuinferHeaderLabel, Terminal as cpuinferTerminal } from './cpuinfer/Scene.jsx';
 import * as cipipelineData from './cipipeline/data.js';
 import CiPipelineScene, { headerLabel as cipipelineHeaderLabel, Terminal as cipipelineTerminal } from './cipipeline/Scene.jsx';
+import * as agenticData from './agentic/data.js';
+import AgenticScene, { headerLabel as agenticHeaderLabel, Terminal as agenticTerminal } from './agentic/Scene.jsx';
 
 /* The registry is the one place that has to know a new workload exists.
  * To add one (AI or not — SAP HANA buffer-cache thrash, Oracle redo-log
@@ -55,12 +55,6 @@ export const WORKLOADS = {
     headerLabel: redologHeaderLabel,
     Terminal: redologTerminal,
   },
-  vmotion: {
-    ...vmotionData,
-    Scene: VmotionScene,
-    headerLabel: vmotionHeaderLabel,
-    Terminal: vmotionTerminal,
-  },
   rag: {
     ...ragData,
     Scene: RagScene,
@@ -84,6 +78,12 @@ export const WORKLOADS = {
     Scene: CiPipelineScene,
     headerLabel: cipipelineHeaderLabel,
     Terminal: cipipelineTerminal,
+  },
+  agentic: {
+    ...agenticData,
+    Scene: AgenticScene,
+    headerLabel: agenticHeaderLabel,
+    Terminal: agenticTerminal,
   },
 };
 

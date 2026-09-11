@@ -56,12 +56,16 @@ export function KnobPanel({ KNOBS, knobs, onChange }) {
       {Object.entries(KNOBS).map(([key, k]) => {
         const value = knobs[key];
         const isToggle = k.type === 'toggle';
+        const isSelect = k.type === 'select';
+        const selectedOption = isSelect ? k.options.find((o) => o.value === value) : null;
         return (
           <div key={key} style={{ background: C.panel, border: `1px solid ${C.edge}`, borderRadius: 9, padding: '8px 10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 11 }}>
               <span style={{ color: C.mut }}>{k.label}</span>
               <span style={{ fontFamily: C.mono, color: C.ink, fontWeight: 700 }}>
-                {isToggle ? (value ? k.onLabel : k.offLabel) : `${value}${k.unit}`}
+                {isToggle ? (value ? k.onLabel : k.offLabel)
+                  : isSelect ? (selectedOption ? selectedOption.label : value)
+                  : `${value}${k.unit}`}
               </span>
             </div>
             {isToggle ? (
@@ -76,6 +80,19 @@ export function KnobPanel({ KNOBS, knobs, onChange }) {
                       style={{ border: `1px solid ${selected ? C.cyan : C.edge}`, borderRadius: 7, background: selected ? '#12313a' : C.bg,
                         color: selected ? C.ink : C.mut, padding: '6px 8px', fontSize: 11, fontFamily: C.mono, fontWeight: selected ? 800 : 600 }}>
                       {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : isSelect ? (
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${k.options.length}, 1fr)`, gap: 4, marginTop: 7 }}>
+                {k.options.map((option) => {
+                  const selected = value === option.value;
+                  return (
+                    <button key={option.value} type="button" className="btn" onClick={() => onChange(key, option.value)}
+                      style={{ border: `1px solid ${selected ? C.cyan : C.edge}`, borderRadius: 7, background: selected ? '#12313a' : C.bg,
+                        color: selected ? C.ink : C.mut, padding: '6px 8px', fontSize: 11, fontFamily: C.mono, fontWeight: selected ? 800 : 600 }}>
+                      {option.shortLabel || option.label}
                     </button>
                   );
                 })}

@@ -43,9 +43,31 @@ export const TIMING = {
   MAX_QUEUE: 14,
 };
 
+// Live-tunable on top of the authored ramp/saturated story (see
+// src/engine/workloadContract.js's KNOBS extension): PCIe generation
+// changes how loaded the `pcie` resource reads, but never who the
+// bottleneck is here — new requests arrive over PCIe, KV cache capacity is
+// what actually fills up. Doubling lane bandwidth halves the pressure on a
+// resource that was never close to the wall. That contrast — a knob that
+// visibly moves its own bar and nothing else — is deliberate.
+export const DEFAULT_KNOBS = { pcieGen: 'gen5' };
+const PCIE_GEN_SCALE = { gen5: 1, gen6: 0.5 };
+
+export const KNOBS = {
+  pcieGen: {
+    type: 'select',
+    label: 'PCIe Generation',
+    options: [
+      { value: 'gen5', label: 'PCIe 5.0', shortLabel: 'Gen 5' },
+      { value: 'gen6', label: 'PCIe 6.0 · 2x bandwidth', shortLabel: 'Gen 6' },
+    ],
+  },
+};
+
 export function createState() {
   return {
     phase: 'ramp', phaseStart: 0, saturatedStart: 0, requests: 0, queued: 0,
+    knobs: { ...DEFAULT_KNOBS },
     disp: { nic: 0, cpu: 0, hostMem: 0, pcie: 0, compute: 0, hbmBw: 0, mem: 0 },
   };
 }
@@ -64,7 +86,19 @@ export function step(s, dt, speed) {
 export function targetLoads(s) {
   const target = { ...PHASES[s.phase].loads };
   if (s.phase === 'ramp') target.mem = 0.12 + (s.requests / TIMING.CAPACITY) * 0.6; // slots filling
+  target.pcie *= PCIE_GEN_SCALE[s.knobs.pcieGen] ?? 1;
   return target;
+}
+
+/** Same authored caption, plus a note when the PCIe knob is flipped to
+ * Gen 6 — makes the "doesn't matter here" result explicit instead of
+ * relying on the viewer to notice the pcie bar shrank while mem stayed
+ * pinned. */
+export function caption(s) {
+  const base = PHASES[s.phase].caption;
+  if (s.knobs.pcieGen !== 'gen6') return base;
+  const bnName = RESOURCES[PHASES[s.phase].bottleneck].name;
+  return `${base} Doubling PCIe bandwidth here doesn't touch that — the wall is ${bnName}, not the link new requests arrive over.`;
 }
 
 export function reset(s) {
