@@ -4,8 +4,10 @@ import { LEVERS, impactRows, notModeled } from './data.js';
 
 const VERDICT = {
   relieved: { label: 'Bottleneck relieved', color: '#4ad991' },
+  'new-wall': { label: 'Becomes the new bottleneck', color: heat(0.95) },
   'still-wall': { label: 'Still the wall', color: heat(0.95) },
   'eased-not-wall': { label: "Eased, wasn't the wall anyway", color: '#e0b84a' },
+  'worsened-not-wall': { label: "Worse, but still wasn't the wall", color: '#e0b84a' },
   'no-effect': { label: 'No real effect', color: C.mut },
 };
 
@@ -18,7 +20,7 @@ function Bar({ v, dim }) {
 }
 
 export default function LeverImpact() {
-  const [leverId, setLeverId] = useState('pcieLanes');
+  const [leverId, setLeverId] = useState('coreCount');
   const lever = LEVERS[leverId];
   const rows = impactRows(leverId);
   const skipped = notModeled(leverId);
@@ -37,7 +39,7 @@ export default function LeverImpact() {
         data the animated workloads use.
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
         {Object.values(LEVERS).map((l) => (
           <div key={l.id} className="btn" onClick={() => setLeverId(l.id)}
             style={{ padding: '8px 14px', borderRadius: 9, border: `1px solid ${leverId === l.id ? C.cyan : C.edge}`,

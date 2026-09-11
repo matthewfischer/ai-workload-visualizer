@@ -38,7 +38,6 @@ describe('lever impact: static read of each workload\'s authored PHASES loads', 
     for (const lever of Object.values(LEVERS)) {
       expect(lever.label).toBeTruthy();
       expect(lever.note).toBeTruthy();
-      expect(lever.factor).toBeGreaterThan(0);
     }
   });
 
@@ -47,5 +46,37 @@ describe('lever impact: static read of each workload\'s authored PHASES loads', 
     for (const r of rows) {
       expect(r.upgraded).toBeCloseTo(Math.min(1, r.baseline * LEVERS.pcieLanes.factor));
     }
+  });
+
+  it('PCIe Generation mirrors PCIe Lanes — same physical effect, different framing', () => {
+    expect(impactRows('pcieGen')).toEqual(impactRows('pcieLanes'));
+  });
+
+  it('core count reports agentic\'s real live default (Turin, 100% pinned), not its unused authored fallback (50%)', () => {
+    const row = impactRows('coreCount').find((r) => r.workloadId === 'agentic');
+    expect(row).toBeTruthy();
+    expect(row.baseline).toBe(1);
+  });
+
+  it('core count barely touches GPU workloads\' Host CPU resource — never their bottleneck', () => {
+    const rows = impactRows('coreCount').filter((r) => r.workloadId !== 'agentic' && r.workloadId !== 'cpuinfer');
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => r.verdict === 'no-effect' || r.verdict === 'eased-not-wall')).toBe(true);
+  });
+
+  it('core frequency only touches agentic and cpuinfer — the two places count vs. frequency is explicitly modeled', () => {
+    const rows = impactRows('coreFreq');
+    expect(rows.every((r) => r.workloadId === 'agentic' || r.workloadId === 'cpuinfer')).toBe(true);
+    expect(rows.length).toBeGreaterThan(0);
+  });
+
+  it('DIMMs per channel is a real two-sided trade on cpuinfer: bandwidth gets worse, capacity gets better', () => {
+    const rows = impactRows('dimmsPerChannel');
+    const bw = rows.filter((r) => r.resourceName === 'System Memory Bandwidth');
+    const cap = rows.filter((r) => r.resourceName === 'System Memory Capacity');
+    expect(bw.length).toBeGreaterThan(0);
+    expect(cap.length).toBeGreaterThan(0);
+    expect(bw.every((r) => r.upgraded > r.baseline)).toBe(true);
+    expect(cap.every((r) => r.upgraded < r.baseline)).toBe(true);
   });
 });

@@ -1,14 +1,26 @@
 /* Cross-workload "what does this hardware change actually help" view.
  * Unlike the per-workload KNOBS (agentic's core-count knob, batch's
- * PCIe-gen knob), this doesn't run a live simulation — it reads each
- * workload's already-authored PHASES loads directly and asks: does
- * scaling this one resource by this lever's factor ever change who the
- * bottleneck is?
+ * PCIe-gen knob), this doesn't run a live simulation — for each (workload,
+ * phase) a lever targets, it builds that workload's default state, asks
+ * for its resource loads (via targetLoads() when the workload defines one,
+ * so knob-driven workloads like agentic report their *real* default
+ * numbers rather than an unused authored fallback — see agentic/data.js,
+ * whose PHASES.loads is explicitly a placeholder never read live), scales
+ * the targeted resource by the lever's factor, and asks: does that ever
+ * change who the bottleneck is?
  *
  * A workload missing from a lever's TARGETS entry has no resource that
  * maps to that lever at all in its model (e.g. cpuinfer has no GPU, so
  * PCIe lanes have nothing to attach to there) — that's reported as "not
  * modeled here", a real answer, not a hidden zero.
+ *
+ * Factors are hand-authored to be directionally honest (same standard the
+ * rest of this project holds itself to — see HANDOFF.md), not measured.
+ * Most levers are straightforward upgrades (factor < 1, less pressure on
+ * the targeted resource). `dimmsPerChannel` is deliberately two-sided: 2
+ * DIMMs/channel raises capacity but drops the JEDEC-supported clock, so it
+ * carries a factor > 1 (more pressure) on bandwidth and < 1 (less
+ * pressure) on capacity, in the same lever.
  *
  * Scope is deliberately the AI-adjacent workloads only (not cipipeline/
  * redolog/noisyneighbor) — those are explicitly not about swappable
@@ -26,33 +38,101 @@ import * as agentic from '../workloads/agentic/data.js';
 const WORKLOADS = { chatbot, longctx, batch, training, rag, cpuinfer, agentic };
 
 export const LEVERS = {
-  pcieLanes: {
-    id: 'pcieLanes',
-    label: 'PCIe Lanes: 64 → 128',
-    short: 'PCIe Lanes',
-    factor: 0.5, // double the lanes ~ half the utilization for the same data volume
-    note: 'Doubling lane count roughly halves utilization pressure on whatever data crosses that link — it does nothing for traffic that never goes over PCIe at all (GPU-to-GPU NVLink, HBM, a vector-DB network hop).',
+  coreCount: {
+    id: 'coreCount',
+    label: 'Core Count: 128 → 256',
+    note: 'More cores raises concurrency — how many things can run at once. It does almost nothing for a workload that\'s already saturating one big resource (HBM bandwidth, a network fabric); it matters most when the wall is "how many sessions/threads fit," not "how fast is any one of them."',
+  },
+  coreFreq: {
+    id: 'coreFreq',
+    label: 'Core Frequency: +25%',
+    note: "A faster clock helps per-task speed, not concurrency. Deliberately narrow here: this project hasn't modeled a count-vs-frequency split for host CPU in the GPU workloads, so this lever only touches the two places that split is explicit.",
+  },
+  coreCache: {
+    id: 'coreCache',
+    label: 'L3 Cache: 256MB → 512MB',
+    note: "More last-level cache reduces how often a working set falls through to DRAM. Only shows up where the CPU itself is doing the heavy lifting — there's no host L3 path into GPU HBM traffic at all.",
+  },
+  dimmsPerChannel: {
+    id: 'dimmsPerChannel',
+    label: 'DIMMs per Channel: 1 → 2',
+    note: 'A real trade, not a strict upgrade: populating a second DIMM/channel roughly doubles capacity but forces a lower JEDEC-supported clock, so bandwidth pressure goes up while capacity pressure goes down — in the same move.',
   },
   memChannels: {
     id: 'memChannels',
     label: 'Memory Channels: 12 → 16',
-    short: 'Memory Channels',
-    factor: 12 / 16, // Turin (12ch) -> Venice (16ch), researched ratio
+    factor: 12 / 16,
     note: "More host DDR5 channels raise the CPU's own memory-bandwidth ceiling. It has nothing to do with GPU HBM bandwidth — a different physical memory system — so this only ever touches CPU-side resources.",
+  },
+  pcieLanes: {
+    id: 'pcieLanes',
+    label: 'PCIe Lanes: 64 → 128',
+    factor: 0.5,
+    note: 'Doubling lane count roughly halves utilization pressure on whatever data crosses that link — it does nothing for traffic that never goes over PCIe at all (GPU-to-GPU NVLink, HBM, a vector-DB network hop).',
+  },
+  pcieGen: {
+    id: 'pcieGen',
+    label: 'PCIe Generation: 5.0 → 6.0',
+    factor: 0.5,
+    note: 'Mechanically the same effect as doubling lane count (PCIe 6.0 doubles per-lane throughput) — listed separately because "we moved to Gen 6" and "we added more lanes" are different claims people actually make, even though the math lands the same place.',
   },
 };
 
-// lever -> workload id -> [{ phase, key }] — which PHASES entries + resource
-// key that workload has for this lever, if any.
+// lever -> workload id -> [{ phase, key, factor? }] — which PHASES entries +
+// resource key that workload has for this lever, if any. `factor` overrides
+// the lever's default factor for that specific (workload, phase, key).
 const TARGETS = {
+  coreCount: {
+    agentic: [{ phase: 'running', key: 'coreSlots', factor: 0.5 }],
+    cpuinfer: [
+      { phase: 'prefill', key: 'compute', factor: 0.65 },
+      { phase: 'decode', key: 'compute', factor: 0.65 },
+    ],
+    chatbot: [{ phase: 'prefill', key: 'cpu', factor: 0.7 }, { phase: 'decode', key: 'cpu', factor: 0.7 }],
+    longctx: [{ phase: 'ingest', key: 'cpu', factor: 0.7 }, { phase: 'summarize', key: 'cpu', factor: 0.7 }],
+    batch: [{ phase: 'ramp', key: 'cpu', factor: 0.7 }, { phase: 'saturated', key: 'cpu', factor: 0.7 }],
+    training: [{ phase: 'compute', key: 'cpu', factor: 0.7 }, { phase: 'allreduce', key: 'cpu', factor: 0.7 }],
+    rag: [
+      { phase: 'retrieve', key: 'cpu', factor: 0.7 },
+      { phase: 'prefill', key: 'cpu', factor: 0.7 },
+      { phase: 'decode', key: 'cpu', factor: 0.7 },
+    ],
+  },
+  coreFreq: {
+    agentic: [{ phase: 'running', key: 'perTaskSpeed', factor: 0.8 }],
+    cpuinfer: [
+      { phase: 'prefill', key: 'compute', factor: 0.85 },
+      { phase: 'decode', key: 'compute', factor: 0.9 },
+    ],
+  },
+  coreCache: {
+    cpuinfer: [
+      { phase: 'prefill', key: 'memBw', factor: 0.9 },
+      { phase: 'decode', key: 'memBw', factor: 0.85 },
+    ],
+  },
+  dimmsPerChannel: {
+    cpuinfer: [
+      { phase: 'prefill', key: 'memBw', factor: 1.1 },
+      { phase: 'decode', key: 'memBw', factor: 1.15 },
+      { phase: 'prefill', key: 'mem', factor: 0.6 },
+      { phase: 'decode', key: 'mem', factor: 0.55 },
+    ],
+  },
+  memChannels: {
+    cpuinfer: [{ phase: 'prefill', key: 'memBw' }, { phase: 'decode', key: 'memBw' }],
+  },
   pcieLanes: {
     chatbot: [{ phase: 'prefill', key: 'pcie' }, { phase: 'decode', key: 'pcie' }],
     longctx: [{ phase: 'ingest', key: 'pcie' }, { phase: 'summarize', key: 'pcie' }],
     batch: [{ phase: 'ramp', key: 'pcie' }, { phase: 'saturated', key: 'pcie' }],
     training: [{ phase: 'compute', key: 'pcie' }, { phase: 'allreduce', key: 'pcie' }],
   },
-  memChannels: {
-    cpuinfer: [{ phase: 'prefill', key: 'memBw' }, { phase: 'decode', key: 'memBw' }],
+  pcieGen: {
+    chatbot: [{ phase: 'prefill', key: 'pcie' }, { phase: 'decode', key: 'pcie' }],
+    longctx: [{ phase: 'ingest', key: 'pcie' }, { phase: 'summarize', key: 'pcie' }],
+    batch: [{ phase: 'ramp', key: 'pcie' }, { phase: 'saturated', key: 'pcie' }],
+    training: [{ phase: 'compute', key: 'pcie' }, { phase: 'allreduce', key: 'pcie' }],
   },
 };
 
@@ -60,36 +140,43 @@ function argmaxKey(loads) {
   return Object.entries(loads).reduce((a, b) => (b[1] > a[1] ? b : a))[0];
 }
 
-/** One row per (workload, phase) this lever actually touches, with a
- * verdict bucket: 'relieved' (was the bottleneck, isn't after) / 'still-wall'
- * (was and remains the bottleneck) / 'eased-not-wall' (meaningfully loaded
- * but never the tallest bar, before or after) / 'no-effect' (barely loaded
- * either way). */
+/** relieved / new-wall / still-wall are about who's on top; eased/worsened
+ * -not-wall are for a resource that moved meaningfully (>=40%) but was
+ * never (before or after) actually the tallest bar; no-effect is everyone
+ * else. Handles both directions — a factor > 1 (dimmsPerChannel's
+ * bandwidth cost) is exactly as reportable as a factor < 1. */
+function verdictFor(before, after, wasBottleneck, isBottleneck) {
+  if (wasBottleneck && !isBottleneck) return 'relieved';
+  if (!wasBottleneck && isBottleneck) return 'new-wall';
+  if (wasBottleneck && isBottleneck) return 'still-wall';
+  if (Math.max(before, after) >= 0.4) return after > before ? 'worsened-not-wall' : 'eased-not-wall';
+  return 'no-effect';
+}
+
+/** One row per (workload, phase, resource) this lever actually touches. */
 export function impactRows(leverId) {
   const lever = LEVERS[leverId];
   const targets = TARGETS[leverId] || {};
   const rows = [];
   for (const [wid, specs] of Object.entries(targets)) {
     const w = WORKLOADS[wid];
-    for (const { phase, key } of specs) {
-      const loads = w.PHASES[phase].loads;
+    for (const spec of specs) {
+      const { phase, key } = spec;
+      const factor = spec.factor ?? lever.factor;
+      const state = w.createState();
+      state.phase = phase;
+      const loads = w.targetLoads ? w.targetLoads(state) : w.PHASES[phase].loads;
       const baseline = loads[key];
-      const upgraded = Math.max(0, Math.min(1, baseline * lever.factor));
+      const upgraded = Math.max(0, Math.min(1, baseline * factor));
       const wasBottleneck = argmaxKey(loads) === key;
-      const stillBottleneck = argmaxKey({ ...loads, [key]: upgraded }) === key;
-
-      let verdict;
-      if (wasBottleneck && !stillBottleneck) verdict = 'relieved';
-      else if (wasBottleneck && stillBottleneck) verdict = 'still-wall';
-      else if (baseline >= 0.4) verdict = 'eased-not-wall';
-      else verdict = 'no-effect';
-
+      const isBottleneck = argmaxKey({ ...loads, [key]: upgraded }) === key;
       rows.push({
         workloadId: wid,
         workloadLabel: w.label,
         phaseName: w.PHASES[phase].name,
         resourceName: w.RESOURCES[key].name,
-        baseline, upgraded, verdict,
+        baseline, upgraded,
+        verdict: verdictFor(baseline, upgraded, wasBottleneck, isBottleneck),
       });
     }
   }
