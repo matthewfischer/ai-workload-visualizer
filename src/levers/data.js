@@ -183,6 +183,16 @@ export function impactRows(leverId) {
   return rows;
 }
 
+/** The factor a given (lever, workload, resource) target actually uses —
+ * exported so the curve charts (curves.js) can stay in sync with TARGETS
+ * instead of duplicating magic numbers. */
+export function targetFactor(leverId, workloadId, key) {
+  const specs = (TARGETS[leverId] || {})[workloadId] || [];
+  const spec = specs.find((s) => s.key === key);
+  if (!spec) return null;
+  return spec.factor ?? LEVERS[leverId].factor;
+}
+
 /** Workloads (from the AI-adjacent set above) with no path at all for this
  * lever to attach to — a real "doesn't apply here", not an omission. */
 export function notModeled(leverId) {
