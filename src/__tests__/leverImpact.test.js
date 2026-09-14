@@ -29,9 +29,9 @@ describe('lever impact: static read of each workload\'s authored PHASES loads', 
     expect(rows.length).toBeGreaterThan(0);
   });
 
-  it('rag, cpuinfer, and agentic have no PCIe path modeled at all', () => {
+  it('cpuinfer and agentic have no PCIe path modeled at all', () => {
     const skipped = notModeled('pcieLanes');
-    expect(skipped).toEqual(expect.arrayContaining(['Answering with retrieval (RAG)', 'Running inference on CPU', 'Running an agent fleet']));
+    expect(skipped).toEqual(expect.arrayContaining(['Running inference on CPU', 'Running an agent fleet']));
   });
 
   it('every lever exposes a human-readable label and note', () => {

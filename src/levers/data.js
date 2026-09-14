@@ -28,14 +28,17 @@
  * nothing meaningful to say about them either way. */
 
 import * as chatbot from '../workloads/chatbot/data.js';
-import * as longctx from '../workloads/longctx/data.js';
 import * as batch from '../workloads/batch/data.js';
 import * as training from '../workloads/training/data.js';
-import * as rag from '../workloads/rag/data.js';
 import * as cpuinfer from '../workloads/cpuinfer/data.js';
 import * as agentic from '../workloads/agentic/data.js';
 
-const WORKLOADS = { chatbot, longctx, batch, training, rag, cpuinfer, agentic };
+// `research` (added alongside agentic/batch/etc. as a workload) isn't
+// wired in here yet — it has the same real coreSlots/platform concurrency
+// math as agentic, so it deserves a proper charted curve (see
+// AgenticCoreCountSection in LeverImpact.jsx), not a static single-point
+// row that would misreport it as "not modeled." Follow-up, not this pass.
+const WORKLOADS = { chatbot, batch, training, cpuinfer, agentic };
 
 export const LEVERS = {
   coreCount: {
@@ -89,14 +92,8 @@ const TARGETS = {
       { phase: 'decode', key: 'compute', factor: 0.65 },
     ],
     chatbot: [{ phase: 'prefill', key: 'cpu', factor: 0.7 }, { phase: 'decode', key: 'cpu', factor: 0.7 }],
-    longctx: [{ phase: 'ingest', key: 'cpu', factor: 0.7 }, { phase: 'summarize', key: 'cpu', factor: 0.7 }],
     batch: [{ phase: 'ramp', key: 'cpu', factor: 0.7 }, { phase: 'saturated', key: 'cpu', factor: 0.7 }],
     training: [{ phase: 'compute', key: 'cpu', factor: 0.7 }, { phase: 'allreduce', key: 'cpu', factor: 0.7 }],
-    rag: [
-      { phase: 'retrieve', key: 'cpu', factor: 0.7 },
-      { phase: 'prefill', key: 'cpu', factor: 0.7 },
-      { phase: 'decode', key: 'cpu', factor: 0.7 },
-    ],
   },
   coreFreq: {
     agentic: [{ phase: 'running', key: 'perTaskSpeed', factor: 0.8 }],
@@ -124,13 +121,11 @@ const TARGETS = {
   },
   pcieLanes: {
     chatbot: [{ phase: 'prefill', key: 'pcie' }, { phase: 'decode', key: 'pcie' }],
-    longctx: [{ phase: 'ingest', key: 'pcie' }, { phase: 'summarize', key: 'pcie' }],
     batch: [{ phase: 'ramp', key: 'pcie' }, { phase: 'saturated', key: 'pcie' }],
     training: [{ phase: 'compute', key: 'pcie' }, { phase: 'allreduce', key: 'pcie' }],
   },
   pcieGen: {
     chatbot: [{ phase: 'prefill', key: 'pcie' }, { phase: 'decode', key: 'pcie' }],
-    longctx: [{ phase: 'ingest', key: 'pcie' }, { phase: 'summarize', key: 'pcie' }],
     batch: [{ phase: 'ramp', key: 'pcie' }, { phase: 'saturated', key: 'pcie' }],
     training: [{ phase: 'compute', key: 'pcie' }, { phase: 'allreduce', key: 'pcie' }],
   },
